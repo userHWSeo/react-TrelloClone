@@ -116,3 +116,161 @@ function ToDoList() {
 
 // pattern - value의 식은 정규표현식으로 네이버 이메일만 가능하도록 만들었다.
 ```
+
+<br>
+<br>
+<br>
+<br>
+
+### 220428
+
+기본적인 Form 만들기를 마치고 나서 본적격인 To Do List를 만든다.
+<br>
+
+```
+import { useForm } from "react-hook-form";
+import { atom, useRecoilState } from "recoil";
+
+interface IForm {
+  toDo: string;
+}
+
+// category는 string이 아닌 "TO_DO" 혹은 "DOING" 혹은 "DONE" 만 가능하도록 함.
+interface IToDo {
+  text: string;
+  id: number;
+  category: "TO_DO" | "DOING" | "DONE";
+}
+
+// atom을 만들어 주고 toDo는 배열로 들어오기 때문에 <IToDo[]>로 넣어준다.
+// default 초기값 또한 빈 배열로 설정한다.
+const toDoState = atom<IToDo[]>({
+  key: "toDo",
+  default: [],
+});
+
+function ToDoList() {
+  // Recoil를 CoinTracker에서도 사용했는데
+  // useRecoilState는 읽고 변경까지 가능하기 때문에
+  // 배열을 만들어 [읽기, 변경하여 사용하기]로 쓰였다.
+  const [toDos, setToDos] = useRecoilState(toDoState);
+
+  // useForm을 사용하여 register과 handleSubmit, setValue를 사용한다.
+  // useForm은 form과 form 안에 input을 사용하기 적합하다.
+  const { register, handleSubmit, setValue } = useForm<IForm>();
+
+  // handleValid는 toDo를 받아와 setToDos로 바꿔주는데
+  // 이때 setToDos는 기존 toDo들(oldToDos)은 뒤쪽 배열로 넣어준다.
+  // 이는 새로운 toDo가 들어오면 기존 toDos들은 없애지 않기 위해서이다.
+  const handleValid = ({ toDo }: IForm) => {
+    setToDos((oldToDos) => [
+
+        // Category를 만들어 TODO와 DOING, DONE을 구별한다.
+        // 각 ToDo의 ID도 만들어준다. ID는 ToDo가 생성된 시간으로 함.
+      { text: toDo, id: Date.now(), category: "TO_DO" },
+      ...oldToDos,
+    ]);
+
+    // setValue에 "" 빈 문자열로 리렌더링해준다.
+    setValue("toDo", "");
+  };
+  return (
+    <div>
+      <h1>To Dos</h1>
+      <hr />
+      <form onSubmit={handleSubmit(handleValid)}>
+        <input
+          {...register("toDo", {
+            required: "Please write a To Do",
+          })}
+          placeholder="Write a to do"
+        />
+        <button>Add</button>
+      </form>
+      <ul>
+        {toDos.map((toDo) => (
+          <li key={toDo.id}>{toDo.text}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export default ToDoList;
+```
+
+위의 코드를 한 tsx파일에 넣어놓기엔 가독성도 좋지 않고 코드 유지보수에 적합하지 않다.
+<br>
+리팩토링 작업으로 코드의 목적에 맞게 나누어준다.
+<br>
+<br>
+<br>
+
+- ToDoList.tsx - 리스트를 관리한다.
+  <br>
+- ToDo.tsx - 투두를 관리한다.
+  <br>
+- atoms.tsx - 아톰을 관리한다.
+  <br>
+  <br>
+  <br>
+  이후 ToDo.tsx에서 ToDo를 생성하고 버튼을 사용하여 ToDo를 Doing과 한다.
+
+```
+import React from "react";
+import { useSetRecoilState } from "recoil";
+import { IToDo, toDoState } from "../atoms";
+
+function ToDo({ text, category, id }: IToDo) {
+  const setToDos = useSetRecoilState(toDoState);
+
+  // onClick로 ToDo를 Doing || Done 로 변환시키기 위해 사용한다.
+  // ButtonElement를 받아와 name을 가져오도록 한다.
+  const onClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    const {
+      currentTarget: { name },
+    } = event;
+
+    // setToDos에 함수를 넣고 변수 targetIndex와 newToDo를 만든다.
+    // targetIndex는 클릭 시 toDo.id === id 라면 findIndex로 몇번째 인덱스인지 가져온다.
+    setToDos((oldToDos) => {
+      const targetIndex = oldToDos.findIndex((toDo) => toDo.id === id);
+
+      // Category가 "TO_DO" | "DOING" | "DONE"로 되어있는데 이를 any로 바꾸어 에러를 막아준다.
+      const newToDo = { text, id, category: name as any };
+
+      // 이후 배열 안에 slice를 사용해서 배열의 처음부터 ~ targetIndex 사이의 값을 가져오고
+      // newToDo를 그 사이에 넣고 targetIndex부터 나머지 ToDo까지 가져온다.
+      return [
+        ...oldToDos.slice(0, targetIndex),
+        newToDo,
+        ...oldToDos.slice(targetIndex + 1),
+      ];
+    });
+  };
+  return (
+    <li>
+      <span>{text}</span>
+
+      // 카테고리가 DOING이 아니라면 버튼을 생성하도록함
+      {category !== "DOING" && (
+        <button name="DOING" onClick={onClick}>
+          Doing
+        </button>
+      )}
+      {category !== "TO_DO" && (
+        <button name="TO_DO" onClick={onClick}>
+          To Do
+        </button>
+      )}
+      {category !== "DONE" && (
+        <button name="DONE" onClick={onClick}>
+          Done
+        </button>
+      )}
+    </li>
+  );
+}
+
+export default ToDo;
+```
