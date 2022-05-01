@@ -7,7 +7,7 @@
 <br>
 <br>
 
-### 220428
+### 220429
 
 <br>
 react-hook-form에 대해 배움.
@@ -122,7 +122,7 @@ function ToDoList() {
 <br>
 <br>
 
-### 220428
+### 220430
 
 기본적인 Form 만들기를 마치고 나서 본적격인 To Do List를 만든다.
 <br>
@@ -236,6 +236,7 @@ function ToDo({ text, category, id }: IToDo) {
     setToDos((oldToDos) => {
       const targetIndex = oldToDos.findIndex((toDo) => toDo.id === id);
 
+      // newToDo는 버튼 클릭 시 새로운 category로 바뀐 ToDo를 말한다.
       // Category가 "TO_DO" | "DOING" | "DONE"로 되어있는데 이를 any로 바꾸어 에러를 막아준다.
       const newToDo = { text, id, category: name as any };
 
@@ -273,4 +274,61 @@ function ToDo({ text, category, id }: IToDo) {
 }
 
 export default ToDo;
+```
+
+<br>
+<br>
+<br>
+<br>
+
+### 220501
+
+selector는 파생된 state의 일부를 나타낸다.
+<br>
+selector는 기존 state를 이용하여 새로운 state를 만들어서 반환할 수 있다.
+<br>
+기존의 state는 이용만 할 뿐 변형시키지는 못한다. (읽기만 가능).
+<br>
+파생된 state는 다른 데이터에 의존하는 동적인 데이터를 만들 수 있기 때문에 강력한 개념이다.
+
+```
+export const toDoSelector = selector({
+  key: "toDoSelector",
+  get: ({ get }) => {
+
+    // toDoState를 가져옴
+    const toDos = get(toDoState);
+    // categoryState를 가져옴
+    const category = get(categoryState);
+    // toDOs에서 filter함수를 사용하여 toDo의 카테고리와 category의 state가 일치하면 true를 반환하도록 함
+    return toDos.filter((toDo) => toDo.category === category);
+  },
+});
+```
+
+<br>
+<br>
+
+Enum는 열거형이라는 뜻으로 TypeScript가 제공하는 기능 중 하나이다.
+<br>
+이름이 있는 상수들의 집합을 정의 할 수 있는데 열거형을 사용하면 의도를 문서화 하거나
+<br>
+구분되는 사례 집합을 더 쉽게 만들 수 있다.
+<br>
+또한 숫자 열거형과 문자 열거형을 제공한다.
+
+```
+// 아래와 같이 사용하면 TO_DO는 1로 DOING은 2로 DONE은 3으로 반환된다.
+export enum Categories {
+  "TO_DO",
+  "DOING",
+  "DONE",
+}
+
+// 아래와 같이 사용하면 TO_DO는 TO_DO로 DOING은 DOING으로 DONE은 DONE으로 반환된다.
+export enum Categories {
+  "TO_DO" = "TO_DO",
+  "DOING" = "DOING",
+  "DONE" = "DONE",
+}
 ```
