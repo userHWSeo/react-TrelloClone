@@ -20,7 +20,7 @@ function ToDoList() {
         <option value={Categories.DONE}>Done</option>
       </select>
       <CreateToDo />
-      {toDos?.map((toDo) => (
+      {toDos?.map((toDo: any) => (
         <ToDo key={toDo.id} {...toDo} />
       ))}
     </div>
