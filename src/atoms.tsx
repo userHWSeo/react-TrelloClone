@@ -1,43 +1,18 @@
 import { atom, selector } from "recoil";
-import { recoilPersist } from "recoil-persist";
 
-export enum Categories {
-  "TO_DO" = "TO_DO",
-  "DOING" = "DOING",
-  "DONE" = "DONE",
-  "DELETE" = "DELETE",
-}
-export interface IToDo {
-  text: string;
-  id: number;
-  category: Categories;
-}
-
-export interface IDeleteToDo {
-  category: Categories;
-}
-
-export const categoryState = atom<Categories>({
-  key: "category",
-  default: Categories.TO_DO,
+export const minuteState = atom({
+  key: "minutes",
+  default: 0,
 });
 
-const { persistAtom } = recoilPersist({
-  key: "recoil-persist",
-  storage: localStorage,
-});
-
-export const toDoState = atom({
-  key: "toDo",
-  default: [],
-  effects_UNSTABLE: [persistAtom],
-});
-
-export const toDoSelector = selector({
-  key: "toDoSelector",
+export const hourSelector = selector<number>({
+  key: "hours",
   get: ({ get }) => {
-    const toDos = get(toDoState);
-    const category = get(categoryState);
-    return toDos.filter((toDo: any) => toDo.category === category);
+    const minutes = get(minuteState);
+    return minutes / 60;
+  },
+  set: ({ set }, newValue) => {
+    const minutes = Number(newValue) * 60;
+    set(minuteState, minutes);
   },
 });

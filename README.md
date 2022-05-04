@@ -332,3 +332,265 @@ export enum Categories {
   "DONE" = "DONE",
 }
 ```
+
+<br>
+<br>
+<br>
+<br>
+
+### 220503
+
+React 강의 중 과제를 주어서 해결함.
+<br>
+
+과제 내용
+
+- Delete 버튼을 이용하여 toDo 배열에서 삭제를 하시오.
+- localStorage에 toDo 배열을 저장하시오.
+  <br>
+
+첫번째 Delete 버튼은 간단하게 해결했다.
+<br>
+먼저 ToDo.tsx 에 Delete 버튼을 추가한다.
+
+```
+      // 기존 Doing, Done 버튼과 같이 만듬
+      {category !== Categories.DELETE && (
+        <button name={Categories.DELETE + ""} onClick={onDelete}>
+          DELETE
+        </button>
+      )}
+```
+
+이후 atom.tsx 에 Categories에 DELETE를 추가해준다.
+
+```
+export enum Categories {
+  "TO_DO" = "TO_DO",
+  "DOING" = "DOING",
+  "DONE" = "DONE",
+  "DELETE" = "DELETE", // DELETE 추가
+}
+```
+
+Delete 버튼에 onClick은 toDo를 추가하는게 아닌 지우는 목적이므로
+<br>
+onClick 함수가 아닌 onDelelte 함수로 받음.
+
+```
+const onDelete = (event: React.MouseEvent<HTMLButtonElement>) => {
+  setToDos((oldToDos: any) => {
+  const targetIndex = oldToDos.findIndex((toDo: any) => toDo.id === id);
+  return [
+    ...oldToDos.slice(0, targetIndex),
+    ...oldToDos.slice(targetIndex + 1),
+    ];
+  });
+};
+```
+
+기존 onClick과 유사하지만 return에서 차이가 남.
+<br>
+먼저 Delete가 클릭 되면 클릭 된 targetIndex를 받고
+<br>
+slice함수를 통해 oldToDos 배열에서 targerIndex의 앞 요소와 뒤 요소만 가져온다.
+<br>
+한마디로 targetIndex의 요소를 제외한 나머지를 가져온다는 것이다.
+
+<br>
+<br>
+두번째로는 localStorage에 저장하는 것인데
+<br>
+recoil에서 recoil-persist에 storage 기능을 사용했다.
+<br>
+<br>
+* https://www.npmjs.com/package/recoil-persist 👈 라이브러리 주소
+
+```
+$ npm install recoil-persist
+```
+
+recoil-persist를 설치 한 후 atom.tsx에 추가해준다.
+<br>
+라이브러리 주소에 예제 코드를 보고 따라치면 된다.
+
+```
+const { persistAtom } = recoilPersist({
+  key: "recoil-persist",
+  storage: localStorage,
+});
+
+export const toDoState = atom({
+  key: "toDo",
+  default: [],
+  effects_UNSTABLE: [persistAtom],
+});
+```
+
+이후 localStorage에 ToDo 배열이 저장되는 걸 확인 할 수 있다.
+
+- 첫번째 문제점은 recoil-persist가 recoil의 0.6.1 버전까지만 호환이 가능하다.
+  <br>
+  문제 해결은 간단하게 recoil를 다운그레이드하여 해결했다.
+  <br>
+  <br>
+- 두번째 문제점은 recoil을 다운그레이드하니 index.tsx에 RecoilRoot가 오류가 났다.
+  <br>
+  구글에 검색해보니 RecoilRoot 오류는 recoil의 0.7.x 버전 이상에서만 사용가능하다고 한다.
+  <br>
+  옳바른 방법은 아니긴 하지만 다시 recoil의 버전을 업그레이드 한 후 실행한 결과.
+  <br>
+  recoil-persist과 RecoilRoot가 정상 작동했다.
+
+<br>
+<br>
+<br>
+<br>
+
+### 220504
+
+selector에 대한 복습 및 get과 set을 통한 minute과 hour 변환
+<br>
+<br>
+
+```
+// APP.tsx
+
+import React from "react";
+import { useRecoilState } from "recoil";
+import { hourSelector, minuteState } from "./atoms";
+
+function App() {
+  // atom.tsx에서 minuteState와 hourSelector를 가져온다.
+
+  // minuteState는 minute의 state를 위해 가져온다.
+  // hourSelector은 변환 된 hour 값 혹은 단순 hour의 state를 위해 가져온다.
+  const [minutes, setMinutes] = useRecoilState(minuteState);
+  const [hours, setHours] = useRecoilState(hourSelector);
+
+  // onMinuteChange는 minute의 value값을 가져온다.
+  const onMinutesChange = (event: React.FormEvent<HTMLInputElement>) => {
+    setMinutes(+event.currentTarget.value);
+  };
+  // onHoursChange는 hour의 value 값을 가져온다.
+  const onHoursChange = (event: React.FormEvent<HTMLInputElement>) => {
+    setHours(+event.currentTarget.value);
+  };
+  return (
+    <div>
+      <input
+        value={minutes}
+        onChange={onMinutesChange}
+        type="number"
+        placeholder="Minutes"
+      />
+      <input
+        onChange={onHoursChange}
+        value={hours}
+        type="number"
+        placeholder="Hours"
+      />
+    </div>
+  );
+}
+
+export default App;
+```
+
+<br>
+
+```
+// atom.tsx
+
+import { atom, selector } from "recoil";
+
+// state를 위한 atom 생성
+export const minuteState = atom({
+  key: "minutes",
+  default: 0,
+});
+
+export const hourSelector = selector<number>({
+  key: "hours",
+  // get은 다른 atom이나 selector를 찾을 수 있다.
+  get: ({ get }) => {
+    const minutes = get(minuteState);
+    return minutes / 60;
+  },
+  // set은 쓰기를 가능하게 해준다.
+  set: ({ set }, newValue) => {
+
+    // newValue에 시간을 받아 * 60 을 해여 분으로 반환한다.
+    const minutes = Number(newValue) * 60;
+
+    // set(RecoilState , newValue)의 형태로 반환한다.
+    // 즉 minuteState에 minutes(시간 * 60)를 반환한다는 의미이다.
+    set(minuteState, minutes);
+  },
+});
+```
+
+<br>
+<br>
+이후 React-Beautiful-DnD에 대해 배웠는데
+<br>
+트렐로처럼 드래그를 통한 애니메이션 효과를 내기 위한 react 라이브러리다.
+<br>
+<br>
+https://react-beautiful-dnd.netlify.app/iframe.html?id=board--simple 👈 체험 해보는 주소
+
+```
+$ npm i react-beautiful-dnd
+$ npm i --save-dev @types/react-beautiful-dnd
+```
+
+설치 이후 강의 내용대로 일단 따라쳤다.
+<br>
+혹시 몰라 해당 라이브러리의 샘플 코드 주소도 알아봤다.
+<br>
+https://github.com/atlassian/react-beautiful-dnd/blob/master/docs/about/installation.md 👈 깃헙 주소
+<br>
+
+https://codesandbox.io/s/k260nyxq9v 👈 예시 코드 주소
+
+DragDropContext 태그 안에 Droppable(부모요소 느낌)를 만든 후
+<br>
+Droppable안에 Draggable(자식요소 느낌)을 만들어 사용한다.
+<br>
+똑같이 draggableId를 필요로 하며, Draggable는 index도 넣어준다.
+<br>
+이후 magic에 우클릭 -> Go to Type Definition을 들어가서
+<br>
+droppableProps과 dragHandleProps를 파악한다.
+<br>
+이후 ref={}에 magic.innerRef까지 넣어주면 준비 끝.
+<br>
+<br>
+<br>
+(오늘 강의는 일단 그대로 따라치기만 했다 ... 이해하기 어려움...)
+
+```
+function App() {
+  const onDragEnd = () => {};
+  return (
+    <DragDropContext onDragEnd={onDragEnd}>
+      <div>
+        <Droppable droppableId="one">
+          {(magic) => (
+            <ul ref={magic.innerRef} {...magic.droppableProps}>
+              <Draggable draggableId="first" index={0}>
+                {(magic) => (
+                  <li ref={magic.innerRef} {...magic.draggableProps}>
+                    <span {...magic.dragHandleProps}>❤</span>
+                    One
+                  </li>
+                )}
+              </Draggable>
+            </ul>
+          )}
+        </Droppable>
+      </div>
+    </DragDropContext>
+  );
+}
+```
