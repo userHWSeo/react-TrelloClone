@@ -124,6 +124,7 @@ function ToDoList() {
 
 ### 220430
 
+<br>
 기본적인 Form 만들기를 마치고 나서 본적격인 To Do List를 만든다.
 <br>
 
@@ -283,6 +284,7 @@ export default ToDo;
 
 ### 220501
 
+<br>
 selector는 파생된 state의 일부를 나타낸다.
 <br>
 selector는 기존 state를 이용하여 새로운 state를 만들어서 반환할 수 있다.
@@ -340,6 +342,7 @@ export enum Categories {
 
 ### 220503
 
+<br>
 React 강의 중 과제를 주어서 해결함.
 <br>
 
@@ -449,6 +452,7 @@ export const toDoState = atom({
 
 ### 220504
 
+<br>
 selector에 대한 복습 및 get과 set을 통한 minute과 hour 변환
 <br>
 <br>
@@ -594,3 +598,128 @@ function App() {
   );
 }
 ```
+
+<br>
+<br>
+<br>
+<br>
+
+### 220505
+
+<br>
+오늘은 지난번에 배운 react-beautiful-dnd의 스타일링으로 시작했다.
+<br>
+간단하게 스타일링한 후 Droppable의 Type을 보면 placeholder라는 게 있는데
+<br>
+이를 사용하여 Draggable을 이동할 때 Drappable의 height 변화를 없앨 수 있다.
+
+```
+<Droppable droppableId="one">
+
+              // magic 우클릭 후 Go To Type Definition에 들어가면 Type을 확인 할 수 있다.
+              {(magic) => (
+                <Board ref={magic.innerRef} {...magic.droppableProps}>
+                  {toDos.map((toDo, index) => (
+                    <DragabbleCard key={toDo} index={index} toDo={toDo} />
+                  ))}
+                  {magic.placeholder}
+                </Board>
+              )}
+            </Droppable>
+```
+
+<br>
+그 다음으로 Draggable List 들을 사용자가 원하는 곳에 배치 할 수 있도록 해야한다.
+<br>
+먼저 useRecoilState를 사용하여 변화된 List들을 렌더링하고
+<br>
+atom.tsx에 toDoState로 atom을 만들어 기본 값을 준다.
+
+```
+// atom.tsx
+
+export const toDoState = atom({
+  key: "toDos",
+  default: ["a", "b", "c", "d", "e", "f"],
+});
+
+```
+
+그 다음 onDragEnd에 draggableId와 destination, source 이 세개의 props를 가져온다.
+<br>
+draggableId는 내가 이동 시킨 요소 (a를 이동시켰으면 a가 출력됌)
+destination은 이동 후에, source는 이동 전에 위치(index) 값을 가져오기 위해 사용된다.
+<br>
+<br>
+따라서 splice함수를 이용해 이동하고 나서의 배열을 다시 만들어준다.
+<br>
+
+```
+ const [toDos, setToDos] = useRecoilState(toDoState);
+  const onDragEnd = ({ draggableId, destination, source }: DropResult) => {
+
+    // destination이 undefined type 되어 에러가 발생함.
+    // 그래서 !destination 일 때 리턴하도록 함.
+    if (!destination) return;
+    setToDos((oldToDos) => {
+      const toDosCopy = [...oldToDos];
+
+      // 이동 전 index에서 첫번째 요소를 삭제. (즉 이동 전 index를 삭제)
+      toDosCopy.splice(source.index, 1);
+
+      // 이동 후 index에서 삭제 없이 draggableId를 추가.
+      toDosCopy.splice(destination?.index, 0, draggableId);
+      return toDosCopy;
+    });
+```
+
+여기서 splice는 새로운 배열을 복제하는게 아닌 기존의 배열을 완전히 바꾼다.
+<br>
+예를 들면
+
+```
+const x = "hello";
+x.toUpperCase(); // Hello
+
+// 이후 변수 x를 console.log 하면 "hello"가 나온다.
+
+// 하지만 splice는
+
+const x = ['a', 'b', 'c'];
+x.splice(0, 1);
+
+// 이후 변수 x를 console.log 하면 ['b', 'c']가 나온다.
+```
+
+<br>
+<br>
+다음으로 Draggable를 이동 시킬 때 Draggable의 배열 안 모든 요소가 렌더링 되어버린다.
+<br>
+이를 해결하기 위해 React.memo를 사용한다.
+<br>
+React.memo는 컴포넌트의 props가 바뀌지 않았다면, 리렌더링을 방지하여 컴포넌트의 리렌더링 성능을 최적화 해준다.
+<br>
+
+```
+
+// toDo와 index를 props에 추가한다.
+function DraggableCard({ toDo, index }: IDraggableCardProps) {
+  return (
+    <Draggable key={toDo} draggableId={toDo} index={index}>
+      {(magic) => (
+        <Card
+          ref={magic.innerRef}
+          {...magic.draggableProps}
+          {...magic.dragHandleProps}
+        >
+          {toDo}
+        </Card>
+      )}
+    </Draggable>
+  );
+}
+
+export default React.memo(DraggableCard);
+```
+
+위와 같이 사용하여 불필요한 리렌더링을 방지했다.
