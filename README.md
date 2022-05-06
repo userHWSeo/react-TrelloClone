@@ -723,3 +723,189 @@ export default React.memo(DraggableCard);
 ```
 
 위와 같이 사용하여 불필요한 리렌더링을 방지했다.
+
+<br>
+<br>
+<br>
+<br>
+
+### 220506
+
+이번엔 Board의 개수를 늘려 사용하는 걸 배웠다.
+<br>
+아직 하나의 Drappable에서 Draggable들을 이동 시켰는데
+<br>
+이젠 여러개의 Drappable을 만들 예정이다.
+<br>
+먼저 atoms.tsx 파일에 default에 객체를 만들어 안에 여러 개의 요소를 넣는다.
+
+<br>
+
+```
+// atoms.tsx
+
+import { atom, selector } from "recoil";
+
+// default를 직접 추가할 수 있으므로 아래와 같이 interface를 추가한다.
+interface IToDoState {
+  [key: string]: string[];
+}
+
+export const toDoState = atom<IToDoState>({
+  key: "toDos",
+  // 여러개의 보드를 만듬
+  default: {
+    "To Do": ["a", "b"],
+    Doing: ["c", "d", "e"],
+    Done: ["f"],
+  },
+});
+```
+
+<br>
+이후 Board.tsx 파일을 따로 만든 후 Object.keys()함수를 사용해 Object의 key만 받아와 board를 생성하도록 한다.
+
+```
+...
+  return (
+    <DragDropContext onDragEnd={onDragEnd}>
+      <Wrapper>
+        <Boards>
+        // Object.keys를 사용해 toDoState의 default Object중 이름(keys)만 가져온다.
+          {Object.keys(toDos).map((boardId) => (
+            <Board boardId={boardId} key={boardId} toDos={toDos[boardId]} />
+          ))}
+        </Boards>
+      </Wrapper>
+    </DragDropContext>
+  );
+```
+
+<br>
+이젠 각 Board들의 value값을 다른 Board들로 이동 시키도록 하는데
+<br>
+그전에 같은 Board 안에 Draggable들을 이동 시키도록 한다.
+
+<br>
+
+```
+const [toDos, setToDos] = useRecoilState(toDoState);
+  const onDragEnd = (info: DropResult) => {
+
+    // destination, draggableId, source 을 받아온다.
+    const { destination, draggableId, source } = info;
+    if (!destination) return;
+
+    // 만약 현재 Board와 이동 후 Board의 droppableId가 같다면
+    // (같은 Board 안에서의 이동)
+    if (destination?.droppableId === source.droppableId) {
+      setToDos((allBoards) => {
+
+        // allBoard 객체 안에서 key의 value값을 얻기 위해 key의 이름을 넣는다.
+        // 이때 key의 이름인 source.droppableId 즉 이동 전 보드의 이름을 넣음.
+        const boardCopy = [...allBoards[source.droppableId]];
+        boardCopy.splice(source.index, 1);
+        boardCopy.splice(destination?.index, 0, draggableId);
+        return {
+          ...allBoards,
+
+          // 복사된 boardCopy가 source.droppableId라고 말함.
+          [source.droppableId]: boardCopy,
+        };
+      });
+    }
+```
+
+<br>
+위 코드를 작성 할 때 처음 본 자바스크립트 문법이 있는데
+<br>
+바로 Object의 key를 변수에 할 당하여 사용 할 때 []를 사용한다는 것이다.
+<br>
+<br>
+이제 다른 Board로 Draggable을 이동 시킬 차례인데
+<br>
+
+```
+...
+
+// 만일 현재 이동한 보드의 droppableId와 이동 전 보드의 droppableId가 다를 경우
+if (destination.droppableId !== source.droppableId) {
+      setToDos((allBoards) => {
+        const sourceBoard = [...allBoards[source.droppableId]];
+        const destinationBoard = [...allBoards[destination.droppableId]];
+
+        // 이동 전 보드에 source.index 자리에 요소 1개를 삭제
+        sourceBoard.splice(source.index, 1);
+
+        // 이동 후 보드에 destination.index 자리에 draggableId 추가
+        destinationBoard.splice(destination?.index, 0, draggableId);
+        return {
+          ...allBoards,
+          // source.droppableId의 key를 sourceBoard로
+          // destination.droppableId의 key를 destinationBoard로 반환.
+          [source.droppableId]: sourceBoard,
+          [destination.droppableId]: destinationBoard,
+        };
+      });
+    }
+
+...
+```
+
+<br>
+같은 Board에서 이동 시키는것과 크게 다르지 않고
+<br>
+이동 후의 변수인 destinationBoard를 만들어 사용하면 된다.
+<br>
+<br>
+마지막으로 Snapshot을 배웠는데 (info로 이름을 바꿔 사용) 
+<br>
+이는 Draggable이 Board에서 다른 Board로 넘어갈 때 색상을 바꿔 넘겨주는 타이밍을 알려 줄 수 있다.
+<br>
+
+```
+...
+
+const Area = styled.div<IAreaProps>`
+
+  // isDraggingOver === true 면 pink , isDraggingFromThis === true 면 red
+  background-color: ${(props) =>
+    props.isDraggingOver ? "pink" : props.isDraggingFromThis ? "red" : "blue"};
+  flex-grow: 1;
+  transition: background-color 0.3s ease-in-out;
+  border-radius: 5px;
+`;
+
+// isDraggingFromThis와 isDraggingOver는 boolean타입이다.
+interface IAreaProps {
+  isDraggingFromThis: boolean;
+  isDraggingOver: boolean;
+}
+
+function Board({ toDos, boardId }: IBoardProps) {
+  return (
+    <Wrapper>
+      <Title>{boardId}</Title>
+      <Droppable droppableId={boardId}>
+        {(magic, info) => (
+          <Area
+
+            // isDraggingOver는 현재 선택한 Draggable이 특정 Drappable 위에 드래깅 되고 있는지 확인.
+            isDraggingOver={info.isDraggingOver}
+
+            // 현재 Drappable에서 Draggable 벗어나 드래깅되고 있는지 확인.
+            isDraggingFromThis={Boolean(info.draggingFromThisWith)}
+            ref={magic.innerRef}
+            {...magic.droppableProps}
+          >
+            {toDos.map((toDo, index) => (
+              <DraggableCard key={toDo} index={index} toDo={toDo} />
+            ))}
+            {magic.placeholder}
+          </Area>
+        )}
+      </Droppable>
+    </Wrapper>
+  );
+}
+```
