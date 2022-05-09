@@ -5,15 +5,15 @@ import styled from "styled-components";
 import Board from "./Components/Board";
 
 const Boards = styled.div`
-  display: grid;
-  gap: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
   width: 100%;
-  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
 `;
 
 const Wrapper = styled.div`
   display: flex;
-  max-width: 480px;
   width: 100%;
   margin: 0 auto;
   justify-content: center;
@@ -24,16 +24,17 @@ const Wrapper = styled.div`
 function App() {
   const [toDos, setToDos] = useRecoilState(toDoState);
   const onDragEnd = (info: DropResult) => {
-    const { destination, source, draggableId } = info;
+    const { destination, source } = info;
     if (!destination) return;
     if (destination.droppableId === source.droppableId) {
       setToDos((allBoards) => {
         const boardCopy = [...allBoards[source.droppableId]];
+        const taskObj = boardCopy[source.index];
         console.log(allBoards);
-        console.log(source);
-        console.log([source.droppableId]);
+        console.log(taskObj);
+        console.log(boardCopy);
         boardCopy.splice(source.index, 1);
-        boardCopy.splice(destination?.index, 0, draggableId);
+        boardCopy.splice(destination?.index, 0, taskObj);
         return {
           ...allBoards,
           [source.droppableId]: boardCopy,
@@ -43,9 +44,10 @@ function App() {
     if (destination.droppableId !== source.droppableId) {
       setToDos((allBoard) => {
         const sourceBoard = [...allBoard[source.droppableId]];
+        const taskObj = sourceBoard[source.index];
         const destinationBoard = [...allBoard[destination.droppableId]];
         sourceBoard.splice(source.index, 1);
-        destinationBoard.splice(destination?.index, 0, draggableId);
+        destinationBoard.splice(destination?.index, 0, taskObj);
         return {
           ...allBoard,
           [source.droppableId]: sourceBoard,

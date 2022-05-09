@@ -909,3 +909,216 @@ function Board({ toDos, boardId }: IBoardProps) {
   );
 }
 ```
+
+<br>
+<br>
+<br>
+<br>
+
+### 220509
+
+isDragging으로 Draggable의 드래그 중이거나 드롭 애니메이션인 경우 true반환을 하여 배경색이 바뀌도록 했다.
+<br>
+
+```
+...
+
+const Card = styled.div<{ isDragging: boolean }>`
+  border-radius: 5px;
+  margin-bottom: 5px;
+  padding: 10px 10px;
+  // isDragging이 true일 때와 false일 때 backgroundColor와 boxShadow를 변경함.
+  background-color: ${(props) => (props.isDragging ? "#74b9ff" : "#f8f5ef")};
+  box-shadow: ${(props) =>
+    props.isDragging ? "0px 2px 5px rgba(0, 0, 0, 5)" : "none"};
+`;
+
+<Draggable draggableId={toDoId + ""} index={index}>
+      {(magic, snapshot) => (
+        <Card
+          // isDragging을 사용하여 true와 false를 반환하도록함.
+          isDragging={snapshot.isDragging}
+          ref={magic.innerRef}
+          {...magic.draggableProps}
+          {...magic.dragHandleProps}
+        >
+          {toDoText}
+        </Card>
+      )}
+    </Draggable>
+
+...
+```
+
+<br>
+이후 useRef를 사용해보았다.
+<br>
+useRef는 ref를 사용해 DOM을 선택해 직접 접근하기 위해서 사용한다.
+<br>
+useRef는 .current로 current element를 가져와 사용하게 된다.
+<br>
+한마디로 Reference와 HTML요소를 가져와 그것을 변형 시켜준다.
+<br>
+
+```
+...
+
+// <HTMLInputElement>로 Input에 접근
+const inputRef = useRef<HTMLInputElement>(null);
+  const onClick = () => {
+    // inputRef.current. 으로 DOM 조작
+    inputRef.current?.focus();
+    setTimeout(() => {
+      inputRef.current?.blur();
+    }, 5000);
+  };
+
+return (
+  ...
+  <input ref={inputRef} placeholder="grab me" />
+  <button onClick={onClick}>click me</button>
+  ...
+)
+
+...
+```
+
+<br>
+useRef는 알아만두고 본격적으로 To Do를 만들기 위해 Form을 만든다.
+<br>
+Form은 회원가입 예제를 만들 때 사용해본 기억이 있는데, 그만큼 중요한거 같다.
+<br>
+
+```
+...
+
+// useSetRecoilState와 atom.tsx 파일에 toDoState를 import 해온다.
+const setToDos = useSetRecoilState(toDoState);
+  const { register, setValue, handleSubmit } = useForm<IForm>();
+  const onValid = (data) => {
+    // console.log(data)를 찍어보면 input에 적은 내용이 console.log 창에 보인다.
+    console.log(data)
+    setValue("toDo", "");
+  };
+
+...
+
+      <Form onSubmit={handleSubmit(onValid)}>
+        <input
+          {...register("toDo", { required: true })}
+          type="text"
+          placeholder={`Add task on ${boardId}`}
+        />
+      </Form>
+
+...
+
+```
+
+<br>
+이후 처음에 테스트를 위해 만들었던 atoms.tsx 파일에 toDoState를 빈 배열로  변경해준다.
+
+```
+export const toDoState = atom<IToDoState>({
+  key: "toDos",
+  default: {
+    "To Do": [],
+    Doing: [],
+    Done: [],
+  },
+});
+```
+
+<br>
+이렇게 변경되면 전체적인 type을 모두 바꿔줘야한다.
+<br>
+이제 input에서 받은 배열은 배열 안 객체로 받게 되기 때문에 기존 toDo에서
+<br>
+toDoId와 toDoText를 나누어 사용한다.
+<br>
+
+```
+// 이전의 테스트를 위한 배열
+"To Do" : ["a", "b", "c"]
+
+// input에 입력받은 배열
+[{text: "hello", id: 1},{text: "goodbye", id: 2}]
+```
+
+<br>
+이후 
+boardCopy.splice(destination?.index, 0, droppableId); 코드에서 에러가 발생하게 되는데
+<br>
+이는 toDo로 이루어진 배열 안에 string을 넣으려고 했기 때문이다.
+<br>
+이를 해결하기 위해 taskObj라는 변수를 생성해 boardCopy 배열의 source.index를 가져온다
+<br>
+같은 Board에서의 이동할 때와 다른 Board로 이동할 때 모두 변경해준다.
+
+```
+
+  const [toDos, setToDos] = useRecoilState(toDoState);
+  const onDragEnd = (info: DropResult) => {
+    const { destination, source } = info;
+    if (!destination) return;
+    // 같은 Board로 이동할 때
+    if (destination.droppableId === source.droppableId) {
+      setToDos((allBoards) => {
+        const boardCopy = [...allBoards[source.droppableId]];
+
+        // boardCopy 배열의 source.index를 가져온다.
+        const taskObj = boardCopy[source.index];
+        boardCopy.splice(source.index, 1);
+        boardCopy.splice(destination?.index, 0, taskObj);
+        return {
+          ...allBoards,
+          [source.droppableId]: boardCopy,
+        };
+      });
+    }
+    // 다른 Board로 이동할 때
+    if (destination.droppableId !== source.droppableId) {
+      setToDos((allBoard) => {
+        const sourceBoard = [...allBoard[source.droppableId]];
+        const taskObj = sourceBoard[source.index];
+        const destinationBoard = [...allBoard[destination.droppableId]];
+        sourceBoard.splice(source.index, 1);
+        destinationBoard.splice(destination?.index, 0, taskObj);
+        return {
+          ...allBoard,
+          [source.droppableId]: sourceBoard,
+          [destination.droppableId]: destinationBoard,
+        };
+      });
+    }
+  };
+
+```
+
+<br>
+
+마지막으로 Task를 추가하기 위해 Board.tsx을 수정해준다.
+
+```
+// useSetRecoilState로 toDoState를 import한다.
+const setToDos = useSetRecoilState(toDoState);
+  const { register, setValue, handleSubmit } = useForm<IForm>();
+  const onValid = ({ toDo }: IForm) => {
+
+    // id는 만들어진 시간으로 text는 toDo로 만든다.
+    const newToDo = {
+      id: Date.now(),
+      text: toDo,
+    };
+
+    // 이전 Board들을 가져온 후
+    setToDos((allBoards) => {
+      return {
+        ...allBoards,
+        // 객체가 key : value의 형태이기 때문에 아래와 같이 쓴다.
+        [boardId]: [newToDo, ...allBoards[boardId]],
+      };
+    });
+    setValue("toDo", "");
+
+```
