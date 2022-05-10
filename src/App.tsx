@@ -3,6 +3,12 @@ import { useRecoilState } from "recoil";
 import { toDoState } from "./atoms";
 import styled from "styled-components";
 import Board from "./Components/Board";
+import { faTrashCan } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
+const Body = styled.div`
+  background-color: #fddadf;
+`;
 
 const Boards = styled.div`
   display: flex;
@@ -21,18 +27,33 @@ const Wrapper = styled.div`
   height: 100vh;
 `;
 
+const Icon = styled.div`
+  display: flex;
+  justify-content: center;
+  padding-top: 300px;
+  margin-bottom: -200px;
+`;
+
 function App() {
   const [toDos, setToDos] = useRecoilState(toDoState);
   const onDragEnd = (info: DropResult) => {
     const { destination, source } = info;
+    console.log(destination?.droppableId);
+    if (destination?.droppableId === undefined) {
+      setToDos((allBoards) => {
+        const sourceBoard = [...allBoards[source.droppableId]];
+        sourceBoard.splice(source.index, 1);
+        return {
+          ...allBoards,
+          [source.droppableId]: sourceBoard,
+        };
+      });
+    }
     if (!destination) return;
     if (destination.droppableId === source.droppableId) {
       setToDos((allBoards) => {
         const boardCopy = [...allBoards[source.droppableId]];
         const taskObj = boardCopy[source.index];
-        console.log(allBoards);
-        console.log(taskObj);
-        console.log(boardCopy);
         boardCopy.splice(source.index, 1);
         boardCopy.splice(destination?.index, 0, taskObj);
         return {
@@ -57,15 +78,20 @@ function App() {
     }
   };
   return (
-    <DragDropContext onDragEnd={onDragEnd}>
-      <Wrapper>
-        <Boards>
-          {Object.keys(toDos).map((boardId) => (
-            <Board boardId={boardId} key={boardId} toDos={toDos[boardId]} />
-          ))}
-        </Boards>
-      </Wrapper>
-    </DragDropContext>
+    <Body>
+      <Icon>
+        <FontAwesomeIcon icon={faTrashCan} size="5x" />
+      </Icon>
+      <DragDropContext onDragEnd={onDragEnd}>
+        <Wrapper>
+          <Boards>
+            {Object.keys(toDos).map((boardId) => (
+              <Board boardId={boardId} key={boardId} toDos={toDos[boardId]} />
+            ))}
+          </Boards>
+        </Wrapper>
+      </DragDropContext>
+    </Body>
   );
 }
 

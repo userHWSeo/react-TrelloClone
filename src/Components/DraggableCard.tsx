@@ -3,6 +3,8 @@ import styled from "styled-components";
 import React from "react";
 
 const Card = styled.div<{ isDragging: boolean }>`
+  display: flex;
+  justify-content: space-between;
   border-radius: 5px;
   margin-bottom: 5px;
   padding: 10px 10px;
