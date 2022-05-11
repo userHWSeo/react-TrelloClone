@@ -1122,3 +1122,63 @@ const setToDos = useSetRecoilState(toDoState);
     setValue("toDo", "");
 
 ```
+
+<br>
+<br>
+<br>
+<br>
+
+### 220510
+
+<br>
+부가적으로 두 가지를 추가해봤다.
+<br>
+첫번째는 localStorage 저장이고, 두번째는 Draggable 삭제 기능이다.
+<br>
+<br>
+
+처음 localStorage 저장은 저번에도 한번 다뤘던 적이 있는데 recoil-persist를 사용하는 방법니다.
+<br>
+atom.tsx 파일에 recoil-persist에서 제공하는 예시를 보고 따라서 입력했다.
+
+```
+import { atom } from "recoil";
+import { recoilPersist } from "recoil-persist";
+
+...
+
+// 기본 storage는 localStorage로 되어 있다.
+const { persistAtom } = recoilPersist({
+  key: "toDos",
+});
+
+export const toDoState = atom<IToDoState>({
+  key: "toDos",
+  default: {
+    "To Do": [],
+    Doing: [],
+    Done: [],
+  },
+  effects_UNSTABLE: [persistAtom],
+});
+
+```
+
+두번째는 Draggable 삭제인데 Board가 아닌 곳으로 ToDo를 끌어당기면 삭제하도록 만들었다.
+<br>
+간단하게 ToDo를 끌어다 바깥 영역으로 잡아 당겨 destination.droppableId를 확인해보니 undefined가 나오는걸 console.log로 확인했다.
+<br>
+이후 if문을 활용하여 ToDo가 undefined 영역으로 갈때 해당 ToDo를 splice로 제거하면 끝이다.
+
+```
+if (destination?.droppableId === undefined) {
+      setToDos((allBoards) => {
+        const sourceBoard = [...allBoards[source.droppableId]];
+        sourceBoard.splice(source.index, 1);
+        return {
+          ...allBoards,
+          [source.droppableId]: sourceBoard,
+        };
+      });
+    }
+```
